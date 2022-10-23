@@ -10,6 +10,7 @@ from gnn_tracking.models.edge_classifier import ECForGraphTCN
 from gnn_tracking.models.interaction_network import InteractionNetwork as IN
 from gnn_tracking.models.mlp import MLP
 from gnn_tracking.models.resin import ResIN
+from gnn_tracking.utils.log import logger
 
 
 class INConvBlock(nn.Module):
@@ -203,9 +204,18 @@ class GraphTCN(nn.Module):
         h_hc = self.relu(self.hc_node_encoder(x))
         edge_attr_hc = self.relu(self.hc_edge_encoder(edge_attr))
         h_hc, _, edge_attrs_hc = self.hc_resin(h_hc, edge_index, edge_attr_hc)
-        beta = torch.sigmoid(self.B(h_hc))
+        _pre_beta = self.B(h_hc)
+        beta = torch.sigmoid(_pre_beta)
         # protect against nans
         beta = beta + torch.ones_like(beta) * 10e-9
+        if beta.isnan().any():
+            logger.error("beta nan")
+            logger.debug(
+                f"{h_hc[:10] = }\n",
+                f"{_pre_beta[:10] = }\n",
+                f"{beta[:10] = }\n",
+                f"{x[:10] = }\n",
+            )
 
         h = self.X(h_hc)
         track_params, _ = self.P(h_hc, edge_index, torch.cat(edge_attrs_hc, dim=1))

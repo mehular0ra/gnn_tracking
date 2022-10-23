@@ -282,13 +282,12 @@ class TCNTrainer:
             batch_loss.backward()
             self.optimizer.step()
 
-            if not (batch_idx % 10):
-                self._log_losses(
-                    batch_losses,
-                    header=f"Epoch {self._epoch:>2} "
-                    f"({batch_idx:>5}/{len(self.train_loader)}): ",
-                    style="inline",
-                )
+            self._log_losses(
+                batch_losses,
+                header=f"Epoch {self._epoch:>2} "
+                f"({batch_idx:>5}/{len(self.train_loader)}): ",
+                style="inline",
+            )
 
             _losses["total"].append(batch_loss.item())
             for key, loss in batch_losses.items():
