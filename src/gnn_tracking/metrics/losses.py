@@ -14,6 +14,27 @@ from gnn_tracking.utils.log import logger
 T: TypeAlias = torch.Tensor
 
 
+@torch.jit.script
+def _binary_focal_loss(
+    inpt: T,
+    target: T,
+    alpha: float,
+    pos_weight: T,
+    gamma: float,
+    mask: T,
+) -> T:
+    inpt = inpt[mask]
+    target = target[mask]
+    pos_weight = pos_weight[mask]
+
+    probs_pos = inpt
+    probs_neg = 1 - inpt
+
+    pos_term = -alpha * pos_weight * probs_neg.pow(gamma) * target * probs_pos.log()
+    neg_term = -(1 - alpha) * probs_pos.pow(gamma) * (1.0 - target) * probs_neg.log()
+    return pos_term + neg_term
+
+
 # Follows the implementation in kornia at
 # https://github.com/kornia/kornia/blob/master/kornia/losses/focal.py
 # (binary_focal_loss_with_logits function)
@@ -59,16 +80,16 @@ def binary_focal_loss(
     else:
         mask = torch.full_like(inpt, True).bool()
 
-    inpt = inpt[mask]
-    target = target[mask]
-    pos_weight = pos_weight[mask]
 
-    probs_pos = inpt
-    probs_neg = 1 - inpt
+    loss_tmp = _binary_focal_loss(
+        inpt=inpt,
+        target=target,
+        alpha=alpha,
+        pos_weight=pos_weight,
+        gamma=gamma,
+        mask=mask,
 
-    pos_term = -alpha * pos_weight * probs_neg.pow(gamma) * target * probs_pos.log()
-    neg_term = -(1 - alpha) * probs_pos.pow(gamma) * (1.0 - target) * probs_neg.log()
-    loss_tmp = pos_term + neg_term
+    )
 
     if reduction == "none":
         loss = loss_tmp
@@ -103,7 +124,7 @@ def binary_focal_loss(
     return loss
 
 
-def falsify_low_pt_edges(*, y: T, edge_index: T, pt: T, pt_thld: float = 0.0) -> T:
+def falsify_low_pt_edges(*, y: T, edge_index: T, pt: T, pt_thld: float = 0.0):
     """Modify the ground truth to-be-predicted by the edge classification
     to consider edges that include a hit with pt < pt_thld as false.
 
@@ -265,15 +286,8 @@ class PotentialLoss(torch.nn.Module):
         particle_id: T,
         reconstructable: T,
         track_params: T,
-        ec_hit_mask: T,
         **kwargs,
     ) -> dict[str, T]:
-        # If a post-EC node mask was applied in the model, then all model outputs
-        # already include this mask, while everything gotten from the data
-        # does not. Hence, we apply it here.
-        particle_id = particle_id[ec_hit_mask]
-        reconstructable = reconstructable[ec_hit_mask]
-        track_params = track_params[ec_hit_mask]
         mask = (reconstructable > 0) & (track_params > self.pt_thld)
         return self._condensation_loss(
             beta=beta, x=x, particle_id=particle_id, mask=mask
@@ -298,8 +312,8 @@ class BackgroundLoss(torch.nn.Module):
         return loss
 
     # noinspection PyUnusedLocal
-    def forward(self, *, beta: T, particle_id: T, ec_hit_mask: T, **kwargs) -> T:
-        return self._background_loss(beta=beta, particle_id=particle_id[ec_hit_mask])
+    def forward(self, *, beta: T, particle_id: T, **kwargs) -> T:
+        return self._background_loss(beta=beta, particle_id=particle_id)
 
 
 class ObjectLoss(torch.nn.Module):
