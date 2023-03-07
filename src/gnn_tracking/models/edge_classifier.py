@@ -48,6 +48,26 @@ class EdgeClassifier(nn.Module):
         edge_weights = torch.sigmoid(self.W(edge_latent))
         return edge_weights
 
+def symmetrize_edge_weights(edge_indices: Tensor, edge_weights: Tensor) -> Tensor:
+    """
+    Symmetrizes the edge_weights based on edge_indices
+    Args:
+    edge_indices: A 2xN tensor containing the indices of the edges
+    edge_weights: A 1D tensor containing the weights of the edges
+    
+    Returns:
+    sym_edge_weights: A 1D tensor containing the symmetrized edge weights
+    """
+    ei = edge_indices.tolist()
+    ew = edge_weights.tolist()
+
+    ei_dict = {(x[0], x[1]): i for i, x in enumerate(ei)}
+    for i, e in enumerate(ei):
+        if (e[1], e[0]) in ei_dict:
+            ew[i] = (ew[i] + ew[ei_dict[(e[1], e[0])]]) // 2
+
+    return Tensor(ew)
+
 
 class ECForGraphTCN(nn.Module):
     def __init__(
