@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from torch import Tensor as T
 
-from gnn_tracking.models.track_condensation_networks import mask_nodes_with_few_edges
+from src.gnn_tracking.models.track_condensation_networks import mask_nodes_with_few_edges
 
 
 def test_get_unconnected_node_mask():

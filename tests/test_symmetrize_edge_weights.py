@@ -1,5 +1,5 @@
 from torch import Tensor 
-from gnn_tracking.models.edge_classifier import symmetrize_edge_weights
+from src.gnn_tracking.models.edge_classifier import symmetrize_edge_weights
 
 def test_symmetrize_edge_weights():
     # Example 1
