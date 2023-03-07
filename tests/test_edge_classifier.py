@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import torch
 
-from gnn_tracking.models.edge_classifier import PerfectEdgeClassification
-from gnn_tracking.utils.seeds import fix_seeds
+from src.gnn_tracking.models.edge_classifier import PerfectEdgeClassification
+from src.gnn_tracking.utils.seeds import fix_seeds
 
 
 class MockData:
